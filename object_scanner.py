@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 import os
 import urllib.request
+import time
+from datetime import datetime
+from hand_tracker import HandTracker
 
 def load_model():
     # Load the pre-trained model and configuration
@@ -34,7 +37,7 @@ def load_model():
     
     return net, classes
 
-def process_frame(frame, net, classes):
+def process_frame(frame, net, classes, confidence_threshold=0.5):
     height, width, _ = frame.shape
     
     # Create a blob from the frame
@@ -61,7 +64,7 @@ def process_frame(frame, net, classes):
             class_id = np.argmax(scores)
             confidence = scores[class_id]
             
-            if confidence > 0.5:
+            if confidence > confidence_threshold:
                 # Object detected
                 center_x = int(detection[0] * width)
                 center_y = int(detection[1] * height)
@@ -77,11 +80,11 @@ def process_frame(frame, net, classes):
                 class_ids.append(class_id)
     
     # Apply non-maximum suppression
-    indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
+    indices = cv2.dnn.NMSBoxes(boxes, confidences, confidence_threshold, 0.4)
     
     return boxes, confidences, class_ids, indices
 
-def draw_detections(frame, boxes, confidences, class_ids, indices, classes):
+def draw_detections(frame, boxes, confidences, class_ids, indices, classes, fps, hand_boxes=None, gesture_texts=None):
     if len(indices) > 0:
         for i in indices.flatten():
             x, y, w, h = boxes[i]
@@ -91,12 +94,41 @@ def draw_detections(frame, boxes, confidences, class_ids, indices, classes):
             # Draw bounding box
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             
-            # Add label
+            # Add label with confidence
             text = f"{label}: {confidence:.2f}"
             cv2.putText(frame, text, (x, y - 5),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     
+    # Draw hand boxes and gestures
+    if hand_boxes and gesture_texts:
+        for box, gesture in zip(hand_boxes, gesture_texts):
+            x_min, y_min, x_max, y_max = box
+            
+            # Draw hand bounding box
+            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (255, 0, 0), 2)
+            
+            # Add gesture label
+            cv2.putText(frame, gesture, (x_min, y_min - 10),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+    
+    # Add FPS counter
+    cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    
     return frame
+
+def save_frame(frame):
+    # Create screenshots directory if it doesn't exist
+    if not os.path.exists("screenshots"):
+        os.makedirs("screenshots")
+    
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"screenshots/screenshot_{timestamp}.jpg"
+    
+    # Save the frame
+    cv2.imwrite(filename, frame)
+    print(f"Saved screenshot: {filename}")
 
 def main():
     # Initialize webcam
@@ -106,9 +138,28 @@ def main():
         print("Error: Could not open webcam")
         return
     
-    print("Loading model...")
+    print("Loading models...")
     net, classes = load_model()
-    print("Model loaded successfully!")
+    hand_tracker = HandTracker()
+    print("Models loaded successfully!")
+    
+    # Initialize variables
+    confidence_threshold = 0.5
+    frame_count = 0
+    start_time = time.time()
+    fps = 0
+    
+    print("\nControls:")
+    print("Press 'q' to quit")
+    print("Press 's' to save screenshot")
+    print("Press 'c' to toggle confidence threshold")
+    print("\nHand Gestures:")
+    print("- Open Hand: All fingers up")
+    print("- Closed Fist: All fingers down")
+    print("- Peace Sign: Index and middle fingers up")
+    print("- Pointing: Only index finger up")
+    print("- Gun Sign: Thumb and index fingers up")
+    print("- Four Fingers: All fingers up except thumb")
     
     while True:
         ret, frame = cap.read()
@@ -116,18 +167,43 @@ def main():
             print("Error: Could not read frame")
             break
         
-        # Process frame
-        boxes, confidences, class_ids, indices = process_frame(frame, net, classes)
+        # Calculate FPS
+        frame_count += 1
+        if frame_count >= 30:  # Update FPS every 30 frames
+            end_time = time.time()
+            fps = frame_count / (end_time - start_time)
+            frame_count = 0
+            start_time = time.time()
+        
+        # Process hand tracking
+        frame, hands, hand_boxes = hand_tracker.find_hands(frame)
+        gesture_texts = []
+        
+        if hands:
+            # Get finger states and gestures for each detected hand
+            for hand in hands:
+                finger_states = hand_tracker.get_finger_state(hand)
+                gesture = hand_tracker.get_hand_gesture(finger_states)
+                gesture_texts.append(gesture)
+        
+        # Process object detection
+        boxes, confidences, class_ids, indices = process_frame(frame, net, classes, confidence_threshold)
         
         # Draw detections
-        frame = draw_detections(frame, boxes, confidences, class_ids, indices, classes)
+        frame = draw_detections(frame, boxes, confidences, class_ids, indices, classes, fps, hand_boxes, gesture_texts)
         
         # Display the frame
-        cv2.imshow('Object Detection', frame)
+        cv2.imshow('Object Detection with Hand Tracking', frame)
         
-        # Break the loop if 'q' is pressed
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        # Handle key presses
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
             break
+        elif key == ord('s'):
+            save_frame(frame)
+        elif key == ord('c'):
+            confidence_threshold = 0.3 if confidence_threshold > 0.3 else 0.5
+            print(f"Confidence threshold: {confidence_threshold}")
     
     # Clean up
     cap.release()
