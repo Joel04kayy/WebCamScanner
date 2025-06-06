@@ -4,7 +4,7 @@ A real-time object detection and hand tracking application using YOLOv3, MediaPi
 
 ## Features
 - Real-time object detection using YOLOv3
-- Hand tracking and gesture recognition
+- Hand tracking and gesture recognition (supports up to 2 hands simultaneously)
 - Automatic model download on first run
 - Displays bounding boxes and confidence scores
 - Supports all COCO dataset classes
@@ -15,6 +15,9 @@ A real-time object detection and hand tracking application using YOLOv3, MediaPi
 - Python 3.7+
 - Webcam
 - Internet connection (for first-time model download)
+- opencv-python>=4.5.0
+- numpy>=1.19.0
+- mediapipe>=0.10.0
 
 ## Installation
 
@@ -52,9 +55,12 @@ The application recognizes the following hand gestures:
 - Pointing: Only index finger up
 - Gun Sign: Thumb and index fingers up
 - Four Fingers: All fingers up except thumb
+- Three Fingers: Index, middle, and ring/pinky up
+- Two Fingers: Various combinations of two fingers up
+- Custom Gestures: Any other finger combination
 
 ## Model Information
 - Uses YOLOv3 pre-trained on COCO dataset
-- Uses MediaPipe for hand tracking
-- Model files are automatically downloaded on first run
-- Supports 80 different object classes 
+- Uses MediaPipe for hand tracking (supports up to 2 hands)
+- Model files (yolov3.weights, yolov3.cfg, coco.names) are included in the repository
+- Supports 80 different object classes from the COCO dataset 
