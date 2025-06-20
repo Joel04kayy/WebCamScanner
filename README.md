@@ -74,8 +74,3 @@ The application recognizes the following hand gestures:
 
 
 
-
-
-
-
-
