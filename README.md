@@ -66,6 +66,3 @@ The application recognizes the following hand gestures:
 - Supports 80 different object classes from the COCO dataset
 
 
-
-
-
