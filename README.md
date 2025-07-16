@@ -64,3 +64,15 @@ The application recognizes the following hand gestures:
 - Uses MediaPipe for hand tracking (supports up to 2 hands)
 - Model files (yolov3.weights, yolov3.cfg, coco.names) are included in the repository
 - Supports 80 different object classes from the COCO dataset
+
+
+
+
+
+
+
+
+
+
+
+
