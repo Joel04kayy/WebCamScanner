@@ -3,13 +3,6 @@
 
 
 
-
-
-
-
-
-
-
 # WebCam Object Scanner
 
 A real-time object detection and hand tracking application using YOLOv3, MediaPipe, and OpenCV. This application uses your webcam to detect objects and track hand gestures in real-time.
